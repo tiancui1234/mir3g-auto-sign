@@ -1,0 +1,41 @@
+# 工作流名称：传奇3G自动签到
+name: Mir3G Auto Sign
+# 触发条件：1.定时触发 2.手动触发（方便测试）
+on:
+  schedule:
+    # 定时运行（Cron表达式：分 时 日 月 周，UTC时间）
+    # 示例1：北京时间每天7点签到 → UTC时间23点 → 0 23 * * *
+    # 示例2：北京时间每天8点30分 → UTC时间0点30分 → 30 0 * * *
+    # 按需修改！！！
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # 手动触发（仓库→Actions→Run workflow）
+
+# 运行作业
+jobs:
+  sign-job:
+    runs-on: ubuntu-latest  # GitHub免费Ubuntu环境
+    steps:
+      # 步骤1：拉取仓库代码到虚拟机
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 步骤2：配置Python环境（3.11稳定版）
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # 缓存依赖，加快运行速度
+
+      # 步骤3：安装依赖（仅需requests）
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      # 步骤4：运行签到脚本，传入Secrets中的账号/角色名
+      - name: Run Auto Sign Script
+        env:
+          # 映射GitHub Secrets到脚本的环境变量，名称必须一致！
+          GAME_ACCOUNT: ${{ secrets.GAME_ACCOUNT }}
+          ROLE_NAME: ${{ secrets.ROLE_NAME }}
+        run: python sign.py
