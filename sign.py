@@ -1,17 +1,14 @@
-
 import requests
 import os
 from requests.exceptions import RequestException
+from bs4 import BeautifulSoup
 
-# 固定配置（从HTML提取，已精准配置，无需修改）
-SIGN_URL = "http://115.190.97.157/?sessionid="  # 表单提交地址
-REQUEST_METHOD = "POST"  # 表单提交方式
-# 表单参数（name与HTML输入框完全一致）
+# 固定配置（已适配传奇3G签到系统）
+SIGN_URL = "http://115.190.97.157/?sessionid="
 FORM_DATA = {
-    "userid": os.getenv("GAME_ACCOUNT"),  # 游戏账号（对应userid）
-    "charname": os.getenv("ROLE_NAME")    # 角色名（对应charname）
+    "userid": os.getenv("GAME_ACCOUNT"),
+    "charname": os.getenv("ROLE_NAME")
 }
-# 必要请求头（模拟浏览器，避免被拦截）
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Referer": "http://115.190.97.157/?sessionid=",
@@ -20,37 +17,47 @@ HEADERS = {
 }
 
 def auto_sign():
-    """自动签到核心函数"""
     try:
-        # 发送POST签到请求
+        # 发送签到请求
         response = requests.post(
             url=SIGN_URL,
             data=FORM_DATA,
             headers=HEADERS,
             timeout=15,
-            allow_redirects=True  # 允许重定向（部分网站签到后跳转）
+            allow_redirects=True
         )
-        # 验证请求是否成功
         response.raise_for_status()
-        print(f"✅ 签到请求发送成功，HTTP状态码：{response.status_code}")
-        print(f"📝 响应内容预览：{response.text[:500]}")  # 打印前500字符，方便排查
+        print(f"✅ 请求发送成功，状态码：{response.status_code}")
 
-        # 通用签到成功判断（适配大部分简单表单）
-        if response.status_code in [200, 302]:
-            print("🎉 今日签到操作完成！（页面无明确成功提示，按状态码判定）")
-        else:
-            print("⚠️ 签到状态未知，HTTP状态码非200/302")
+        # 解析页面
+        soup = BeautifulSoup(response.text, "html.parser")
+        sign_card = soup.find("div", id="signCard")
+
+        # ======================================
+        # 核心判定：只要出现 success 或 info 都算成功
+        # ======================================
+        if sign_card:
+            classes = sign_card.get("class", [])
+            if "success" in classes:
+                print("🎉 签到成功：首次签到完成！")
+                return
+            elif "info" in classes:
+                print("🎉 签到成功：今日已签到，无需重复操作！")
+                return
+
+        # 不满足上面2种 → 一律判定失败
+        print("❌ 签到失败：未识别到有效签到状态！")
+        print("📄 页面内容预览：", response.text[:1500])
+        raise SystemExit(1)
 
     except RequestException as e:
-        print(f"❌ 签到失败，错误信息：{str(e)}")
-        raise SystemExit(1)  # 抛出错误，GitHub Actions标记为失败
+        print(f"❌ 签到失败：网络/请求异常 → {str(e)}")
+        raise SystemExit(1)
 
 if __name__ == "__main__":
-    # 校验环境变量是否配置（防止漏填账号/角色名）
-    game_account = os.getenv("GAME_ACCOUNT")
-    role_name = os.getenv("ROLE_NAME")
-    if not game_account or not role_name:
-        print("❌ 错误：未配置GAME_ACCOUNT或ROLE_NAME环境变量")
+    acc = os.getenv("GAME_ACCOUNT")
+    role = os.getenv("ROLE_NAME")
+    if not acc or not role:
+        print("❌ 错误：未配置账号或角色名")
         raise SystemExit(1)
-    # 执行签到
     auto_sign()
