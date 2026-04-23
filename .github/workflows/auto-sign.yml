@@ -4,7 +4,7 @@ name: Mir3G Auto Sign With ServerChan
 on:
   schedule:
     # 定时运行（UTC时间，北京时间=UTC+8，示例：北京时间7点→UTC23点, UTC15→北京时间23点）
-    - cron: '0 15 * * *'
+    - cron: '0 2 * * *'
   workflow_dispatch:  # 手动触发：仓库→Actions→选择此工作流→Run workflow
 
 # 运行作业
